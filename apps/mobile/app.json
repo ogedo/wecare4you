@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "WeCare4You",
+    "slug": "wecare4you",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "wecare4you",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2a9d7f"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.wecare4you.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "WeCare4You needs camera access for video sessions",
+        "NSMicrophoneUsageDescription": "WeCare4You needs microphone access for audio/video sessions"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2a9d7f"
+      },
+      "package": "com.wecare4you.app",
+      "permissions": ["CAMERA", "RECORD_AUDIO", "INTERNET"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2a9d7f"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

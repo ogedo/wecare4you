@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  THERAPIST
+  TALK_BUDDY
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum AppointmentType {
+  VIDEO
+  AUDIO
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+  FAILED
+}
+
+model User {
+  id                      String   @id @default(cuid())
+  email                   String?  @unique
+  phone                   String   @unique
+  passwordHash            String?
+  role                    Role
+  isVerified              Boolean  @default(false)
+  isActive                Boolean  @default(true)
+  paystackRecipientCode   String?
+  bankAccountNumber       String?
+  bankCode                String?
+  bvnVerified             Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  patientProfile    PatientProfile?
+  therapistProfile  TherapistProfile?
+  buddyProfile      BuddyProfile?
+  sentMessages      Message[]        @relation("sender")
+  notifications     Notification[]
+}
+
+model PatientProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth      DateTime?
+  state            String?
+  emergencyContact String?
+  createdAt        DateTime @default(now())
+
+  appointments  Appointment[]  @relation("patient")
+  conversations Conversation[] @relation("patient")
+}
+
+model TherapistProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber   String
+  licenseBody     String
+  specializations String[]
+  bio             String
+  sessionRate     Int
+  isApproved      Boolean  @default(false)
+  availability    Json     @default("{}")
+  state           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointments Appointment[] @relation("therapist")
+}
+
+model BuddyProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio          String
+  sessionRate  Int
+  isApproved   Boolean  @default(false)
+  availability Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  appointments Appointment[] @relation("buddy")
+}
+
+model Appointment {
+  id          String            @id @default(cuid())
+  patientId   String
+  patient     PatientProfile    @relation("patient", fields: [patientId], references: [id])
+  therapistId String?
+  therapist   TherapistProfile? @relation("therapist", fields: [therapistId], references: [id])
+  buddyId     String?
+  buddy       BuddyProfile?     @relation("buddy", fields: [buddyId], references: [id])
+  scheduledAt DateTime
+  duration    Int
+  status      AppointmentStatus @default(PENDING)
+  type        AppointmentType   @default(VIDEO)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  session Session?
+  payment Payment?
+}
+
+model Session {
+  id            String      @id @default(cuid())
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  dailyRoomName String
+  dailyRoomUrl  String
+  startedAt     DateTime?
+  endedAt       DateTime?
+}
+
+model Conversation {
+  id         String         @id @default(cuid())
+  patientId  String
+  patient    PatientProfile @relation("patient", fields: [patientId], references: [id])
+  providerId String
+  createdAt  DateTime       @default(now())
+
+  messages Message[]
+
+  @@unique([patientId, providerId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("sender", fields: [senderId], references: [id])
+  content        String
+  sentAt         DateTime     @default(now())
+  readAt         DateTime?
+}
+
+model Payment {
+  id                 String        @id @default(cuid())
+  appointmentId      String        @unique
+  appointment        Appointment   @relation(fields: [appointmentId], references: [id])
+  paystackReference  String        @unique
+  paystackTransferId String?
+  amount             Int
+  platformFee        Int
+  providerAmount     Int
+  currency           String        @default("NGN")
+  status             PaymentStatus @default(PENDING)
+  paidAt             DateTime?
+  payoutSentAt       DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  payload   Json     @default("{}")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, used])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  resource  String
+  resourceId String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}

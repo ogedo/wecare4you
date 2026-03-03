@@ -1,0 +1,38 @@
+version: "3.9"
+
+# Minimal compose for local development — only infrastructure services.
+# Run your apps with: pnpm dev
+#
+# Usage: docker compose -f docker-compose.dev.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wecare4you_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wecare4you_db
+      POSTGRES_USER: wecare4you
+      POSTGRES_PASSWORD: wecare4you
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wecare4you -d wecare4you_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: wecare4you_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
