@@ -30,7 +30,7 @@ export function AdminSidebar() {
   const handleLogout = async () => {
     await api.post("/auth/logout").catch(() => {});
     logout();
-    window.location.href = "/auth/login";
+    window.location.href = "/login";
   };
 
   return (

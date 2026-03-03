@@ -28,7 +28,7 @@ export function ProviderSidebar({ role }: { role: "therapist" | "buddy" }) {
   const handleLogout = async () => {
     await api.post("/auth/logout").catch(() => {});
     logout();
-    window.location.href = "/auth/login";
+    window.location.href = "/login";
   };
 
   return (

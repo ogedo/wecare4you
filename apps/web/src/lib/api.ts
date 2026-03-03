@@ -30,7 +30,7 @@ api.interceptors.response.use(
         return api(error.config);
       } catch {
         localStorage.removeItem("accessToken");
-        window.location.href = "/auth/login";
+        window.location.href = "/login";
       }
     }
     return Promise.reject(error);
