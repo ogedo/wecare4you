@@ -43,7 +43,7 @@ wecare4you/                     # pnpm + Turborepo monorepo
 ### 1. Clone and install
 
 ```bash
-git clone <repo>
+git clone https://github.com/ogedo/wecare4you.git
 cd wecare4you
 pnpm install
 ```
@@ -60,7 +60,7 @@ cp apps/mobile/.env.example apps/mobile/.env
 ### 3. Start infrastructure
 
 ```bash
-docker compose up -d    # starts PostgreSQL 16 + Redis 7
+docker compose -f docker-compose.dev.yml up -d   # starts PostgreSQL 16 + Redis 7
 ```
 
 ### 4. Database setup
