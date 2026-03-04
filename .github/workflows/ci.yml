@@ -2,13 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: ["**"]
   pull_request:
-    branches: [main]
+    branches: ["**"]
 
 env:
-  NODE_VERSION: "20"
-  PNPM_VERSION: "9"
+  NODE_VERSION: "22"
+  PNPM_VERSION: "9.14.4"
 
 jobs:
   # ─── Lint + Type check ───────────────────────────────────────────────────────
@@ -30,7 +30,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Type check API
+      - name: Generate Prisma client
+        run: pnpm --filter @wecare4you/api db:generate
+        env:
+          DATABASE_URL: postgresql://x:x@localhost:5432/x
+
+      - name: Lint (all workspaces)
+        run: pnpm turbo run lint
+
+      - name: Type-check API
         run: pnpm --filter @wecare4you/api exec tsc --noEmit
         env:
           DATABASE_URL: postgresql://x:x@localhost:5432/x
@@ -43,7 +51,7 @@ jobs:
           DAILY_API_KEY: ci
           DAILY_DOMAIN: ci.daily.co
 
-      - name: Type check Web
+      - name: Type-check Web
         run: pnpm --filter @wecare4you/web exec tsc --noEmit
 
   # ─── API integration tests ───────────────────────────────────────────────────
@@ -103,6 +111,8 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm --filter @wecare4you/api db:generate
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
 
       - name: Push schema to test DB
         run: pnpm --filter @wecare4you/api db:push
