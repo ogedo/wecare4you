@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Calendar, Users, DollarSign, LogOut } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, DollarSign, LogOut, MessageSquare } from "lucide-react";
 import { cn } from "@wecare4you/ui";
 import { useAuthStore } from "@/lib/store";
 import { api } from "@/lib/api";
@@ -11,12 +11,14 @@ const THERAPIST_NAV = [
   { href: "/therapist/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/therapist/appointments", label: "Appointments", icon: Calendar },
   { href: "/therapist/patients", label: "Patients", icon: Users },
+  { href: "/therapist/messages", label: "Messages", icon: MessageSquare },
   { href: "/therapist/earnings", label: "Earnings", icon: DollarSign },
 ];
 
 const BUDDY_NAV = [
   { href: "/buddy/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/buddy/sessions", label: "Sessions", icon: Calendar },
+  { href: "/buddy/messages", label: "Messages", icon: MessageSquare },
   { href: "/buddy/earnings", label: "Earnings", icon: DollarSign },
 ];
 

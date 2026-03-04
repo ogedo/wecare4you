@@ -47,8 +47,8 @@ export default function BuddiesScreen() {
                   <TouchableOpacity
                     onPress={() =>
                       router.push({
-                        pathname: "/(patient)/therapists/[id]",
-                        params: { id: b.id, isBuddy: "1" },
+                        pathname: "/(patient)/buddies/[id]",
+                        params: { id: b.id },
                       })
                     }
                     className="mt-2 bg-primary-500 rounded-xl px-3 py-1.5"

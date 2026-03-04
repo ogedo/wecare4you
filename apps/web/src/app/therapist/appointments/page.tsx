@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -12,6 +13,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function TherapistAppointmentsPage() {
   const qc = useQueryClient();
+  const router = useRouter();
 
   const { data, isLoading } = useQuery({
     queryKey: ["therapist", "appointments", "all"],
@@ -24,7 +26,7 @@ export default function TherapistAppointmentsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["therapist", "appointments"] }),
   });
 
-  if (isLoading) return <div className="text-center py-20 text-neutral-400">Loading...</div>;
+  if (isLoading) return <div className="animate-pulse space-y-4 pt-4">{[...Array(5)].map((_,i) => <div key={i} className="h-12 bg-neutral-200 rounded-xl" />)}</div>;
 
   const appointments = data?.data ?? [];
 
@@ -79,7 +81,7 @@ export default function TherapistAppointmentsPage() {
                     <span className="text-xs text-neutral-300">None</span>
                   )}
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-6 py-4 flex items-center gap-3">
                   {a.status === "PENDING" && (
                     <button
                       onClick={() => updateStatus.mutate({ id: a.id, status: "CONFIRMED" })}
@@ -87,6 +89,14 @@ export default function TherapistAppointmentsPage() {
                       className="text-xs font-medium text-primary-600 hover:text-primary-700"
                     >
                       Confirm
+                    </button>
+                  )}
+                  {a.status === "CONFIRMED" && (
+                    <button
+                      onClick={() => router.push(`/therapist/session/${a.id}`)}
+                      className="text-xs font-medium text-white bg-primary-500 hover:bg-primary-600 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Join Session
                     </button>
                   )}
                 </td>

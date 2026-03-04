@@ -11,6 +11,14 @@ const COOKIE_OPTS = {
   maxAge: 7 * 24 * 3600,
 };
 
+const SESSION_SIGNAL_OPTS = {
+  httpOnly: false,
+  secure: env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 7 * 24 * 3600,
+};
+
 export class AuthController {
   private service = new AuthService();
   private app: FastifyInstance;
@@ -57,6 +65,7 @@ export class AuthController {
       const { accessToken, refreshToken } = this.issueTokens(user.id, user.role);
       await this.service.storeRefreshToken(user.id, refreshToken);
       reply.setCookie("refreshToken", refreshToken, COOKIE_OPTS);
+      reply.setCookie("wc4y_session", "1", SESSION_SIGNAL_OPTS);
       return reply.code(201).send({
         success: true,
         data: {
@@ -80,6 +89,7 @@ export class AuthController {
       const { accessToken, refreshToken } = this.issueTokens(user.id, user.role);
       await this.service.storeRefreshToken(user.id, refreshToken);
       reply.setCookie("refreshToken", refreshToken, COOKIE_OPTS);
+      reply.setCookie("wc4y_session", "1", SESSION_SIGNAL_OPTS);
       return reply.send({
         success: true,
         data: {
@@ -118,6 +128,7 @@ export class AuthController {
       // Best-effort logout
     }
     reply.clearCookie("refreshToken");
+    reply.clearCookie("wc4y_session");
     return reply.send({ success: true, message: "Logged out" });
   }
 

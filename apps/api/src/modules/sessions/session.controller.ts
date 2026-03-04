@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from "../../lib/prisma";
-import { createRoom, createMeetingToken } from "../../lib/daily";
+import { createRoom, createMeetingToken, deleteRoom } from "../../lib/daily";
 
 export class SessionController {
   async start(req: FastifyRequest, reply: FastifyReply) {
@@ -93,6 +93,9 @@ export class SessionController {
       where: { id: session.appointmentId },
       data: { status: "COMPLETED" },
     });
+
+    // Clean up Daily.co room
+    await deleteRoom(session.dailyRoomName).catch(() => {});
 
     return reply.send({ success: true, data: session });
   }

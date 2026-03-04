@@ -1,5 +1,5 @@
-import { ScrollView, View, Text, TouchableOpacity } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import { ScrollView, View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { api } from "@/lib/api";
 
@@ -10,11 +10,34 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "bg-red-100 text-red-600",
 };
 
+interface Appointment {
+  id: string;
+  scheduledAt: string;
+  duration: number;
+  type: string;
+  status: string;
+  therapist?: { user: { phone: string } };
+  buddy?: { user: { phone: string } };
+  payment?: { status: string; paystackReference?: string };
+}
+
 export default function AppointmentsScreen() {
   const router = useRouter();
   const { data, isLoading } = useQuery({
     queryKey: ["patient", "appointments", "all"],
     queryFn: () => api.get("/appointments?limit=20").then((r) => r.data.data ?? []),
+  });
+
+  const initPay = useMutation({
+    mutationFn: (appointmentId: string) =>
+      api.post("/payments/initialize", { appointmentId }),
+    onSuccess: (res, appointmentId) => {
+      const { authorizationUrl } = res.data.data;
+      router.push({
+        pathname: "/(patient)/session/payment",
+        params: { url: authorizationUrl, appointmentId },
+      });
+    },
   });
 
   return (
@@ -25,7 +48,9 @@ export default function AppointmentsScreen() {
 
       <View className="px-6 pt-4">
         {isLoading ? (
-          <Text className="text-center text-neutral-400 py-20">Loading...</Text>
+          <View className="py-20 items-center">
+            <ActivityIndicator color="#2a9d7f" />
+          </View>
         ) : (data ?? []).length === 0 ? (
           <View className="py-20 items-center">
             <Text className="text-4xl mb-4">📅</Text>
@@ -33,51 +58,66 @@ export default function AppointmentsScreen() {
             <Text className="text-neutral-400 text-sm mt-1">Book a session to get started</Text>
           </View>
         ) : (
-          (data ?? []).map((a: {
-            id: string;
-            scheduledAt: string;
-            duration: number;
-            type: string;
-            status: string;
-            therapist?: { user: { phone: string } };
-            buddy?: { user: { phone: string } };
-          }) => (
-            <TouchableOpacity
-              key={a.id}
-              onPress={() => {
-                if (a.status === "CONFIRMED") {
-                  router.push({
-                    pathname: "/(patient)/session/[appointmentId]",
-                    params: { appointmentId: a.id },
-                  });
-                }
-              }}
-              className="bg-white rounded-2xl border border-neutral-200 p-4 mb-3"
-            >
-              <View className="flex-row justify-between items-start">
-                <View className="flex-1">
-                  <Text className="font-semibold text-neutral-900">
-                    {a.therapist
-                      ? `Therapy · ${a.therapist.user.phone}`
-                      : a.buddy
-                      ? `Talk Buddy · ${a.buddy.user.phone}`
-                      : "Session"}
-                  </Text>
-                  <Text className="text-neutral-500 text-sm mt-0.5">
-                    {new Date(a.scheduledAt).toLocaleString("en-NG")} · {a.duration} min
-                  </Text>
+          (data ?? []).map((a: Appointment) => {
+            const needsPayment =
+              a.status === "PENDING" &&
+              (!a.payment || a.payment.status !== "COMPLETED");
+
+            return (
+              <View
+                key={a.id}
+                className="bg-white rounded-2xl border border-neutral-200 p-4 mb-3"
+              >
+                <View className="flex-row justify-between items-start">
+                  <View className="flex-1">
+                    <Text className="font-semibold text-neutral-900">
+                      {a.therapist
+                        ? `Therapy · ${a.therapist.user.phone}`
+                        : a.buddy
+                        ? `Talk Buddy · ${a.buddy.user.phone}`
+                        : "Session"}
+                    </Text>
+                    <Text className="text-neutral-500 text-sm mt-0.5">
+                      {new Date(a.scheduledAt).toLocaleString("en-NG")} · {a.duration} min
+                    </Text>
+                  </View>
+                  <View
+                    className={`rounded-full px-2.5 py-0.5 ${STATUS_COLORS[a.status] ?? "bg-neutral-100 text-neutral-600"}`}
+                  >
+                    <Text className="text-xs font-medium">{a.status}</Text>
+                  </View>
                 </View>
-                <View className={`rounded-full px-2.5 py-0.5 ${STATUS_COLORS[a.status] ?? "bg-neutral-100 text-neutral-600"}`}>
-                  <Text className="text-xs font-medium">{a.status}</Text>
-                </View>
+
+                {needsPayment && (
+                  <TouchableOpacity
+                    onPress={() => initPay.mutate(a.id)}
+                    disabled={initPay.isPending}
+                    className="mt-3 bg-amber-500 rounded-xl py-2.5 items-center"
+                  >
+                    {initPay.isPending ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text className="text-white text-sm font-semibold">Pay Now</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+
+                {a.status === "CONFIRMED" && (
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(patient)/session/[appointmentId]",
+                        params: { appointmentId: a.id },
+                      })
+                    }
+                    className="mt-3 bg-primary-500 rounded-xl py-2.5 items-center"
+                  >
+                    <Text className="text-white text-sm font-semibold">Join Session</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-              {a.status === "CONFIRMED" && (
-                <View className="mt-3 bg-primary-500 rounded-xl py-2 items-center">
-                  <Text className="text-white text-sm font-semibold">Join Session</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))
+            );
+          })
         )}
       </View>
     </ScrollView>

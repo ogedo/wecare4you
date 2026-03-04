@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginSchema } from "@wecare4you/types";
@@ -86,6 +87,13 @@ export default function LoginPage() {
             {isSubmitting ? "Signing in..." : "Sign in"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-neutral-500">
+          New provider?{" "}
+          <Link href="/register" className="text-primary-600 font-medium hover:underline">
+            Join here →
+          </Link>
+        </p>
       </div>
     </div>
   );

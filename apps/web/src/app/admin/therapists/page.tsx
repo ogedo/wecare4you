@@ -18,7 +18,7 @@ export default function AdminTherapistsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin"] }),
   });
 
-  if (isLoading) return <div className="text-center py-20 text-neutral-400">Loading...</div>;
+  if (isLoading) return <div className="animate-pulse space-y-4 pt-4">{[...Array(5)].map((_,i) => <div key={i} className="h-12 bg-neutral-200 rounded-xl" />)}</div>;
 
   const therapists = data?.data ?? [];
 
