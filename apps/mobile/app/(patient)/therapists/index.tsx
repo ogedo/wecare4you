@@ -1,10 +1,20 @@
 import { useState } from "react";
-import { ScrollView, View, Text, TextInput, TouchableOpacity } from "react-native";
+import { ScrollView, View, Text, TouchableOpacity } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import { Star } from "lucide-react-native";
 import { api } from "@/lib/api";
 
 const STATES = ["Lagos", "Abuja", "Rivers", "Oyo", "Kano", "Delta", "Enugu"];
+const SPECIALIZATIONS = [
+  "Anxiety", "Depression", "Trauma", "Stress Management",
+  "Relationships", "Grief", "Addiction", "CBT", "PTSD",
+];
+const MAX_RATES = [
+  { label: "≤ ₦10k", value: 1000000 },
+  { label: "≤ ₦20k", value: 2000000 },
+  { label: "≤ ₦30k", value: 3000000 },
+];
 
 function formatNaira(kobo: number) {
   return new Intl.NumberFormat("en-NG", {
@@ -16,53 +26,103 @@ function formatNaira(kobo: number) {
 export default function TherapistListScreen() {
   const router = useRouter();
   const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [selectedSpec, setSelectedSpec] = useState<string | null>(null);
+  const [selectedMaxRate, setSelectedMaxRate] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["therapists", selectedState],
-    queryFn: () =>
-      api.get(`/therapists?limit=20${selectedState ? `&state=${selectedState}` : ""}`)
-        .then((r) => r.data.data ?? []),
+    queryKey: ["therapists", selectedState, selectedSpec, selectedMaxRate],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: "20" });
+      if (selectedState) params.set("state", selectedState);
+      if (selectedSpec) params.set("specialization", selectedSpec);
+      if (selectedMaxRate) params.set("maxRate", String(selectedMaxRate));
+      return api.get(`/therapists?${params.toString()}`).then((r) => r.data.data ?? []);
+    },
   });
 
-  return (
-    <ScrollView className="flex-1 bg-neutral-50">
-      <View className="pt-14 pb-4 px-6 bg-white border-b border-neutral-100">
-        <Text className="text-xl font-bold text-neutral-900">Find a Therapist</Text>
-        <Text className="text-neutral-500 text-sm mt-1">
-          Licensed professionals ready to help
-        </Text>
-      </View>
+  const activeFilters = [selectedState, selectedSpec, selectedMaxRate != null ? `≤₦${selectedMaxRate / 100 / 1000}k` : null].filter(Boolean).length;
 
-      {/* State filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        className="px-6 py-3 bg-white border-b border-neutral-100"
-      >
-        <TouchableOpacity
-          onPress={() => setSelectedState(null)}
-          className={`mr-2 px-4 py-2 rounded-full border ${
-            !selectedState ? "bg-primary-500 border-primary-500" : "border-neutral-200 bg-white"
-          }`}
-        >
-          <Text className={!selectedState ? "text-white text-sm font-medium" : "text-neutral-600 text-sm"}>
-            All states
-          </Text>
-        </TouchableOpacity>
-        {STATES.map((s) => (
+  return (
+    <ScrollView className="flex-1 bg-neutral-50" stickyHeaderIndices={[0]}>
+      <View className="bg-white border-b border-neutral-100">
+        <View className="pt-14 pb-4 px-6">
+          <View className="flex-row justify-between items-center">
+            <View>
+              <Text className="text-xl font-bold text-neutral-900">Find a Therapist</Text>
+              <Text className="text-neutral-500 text-sm mt-1">Licensed professionals ready to help</Text>
+            </View>
+            {activeFilters > 0 && (
+              <TouchableOpacity
+                onPress={() => { setSelectedState(null); setSelectedSpec(null); setSelectedMaxRate(null); }}
+                className="bg-neutral-100 rounded-full px-3 py-1"
+              >
+                <Text className="text-xs text-neutral-600">Clear ({activeFilters})</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* State filter */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-6 pb-3">
           <TouchableOpacity
-            key={s}
-            onPress={() => setSelectedState(s)}
+            onPress={() => setSelectedState(null)}
             className={`mr-2 px-4 py-2 rounded-full border ${
-              selectedState === s ? "bg-primary-500 border-primary-500" : "border-neutral-200 bg-white"
+              !selectedState ? "bg-primary-500 border-primary-500" : "border-neutral-200 bg-white"
             }`}
           >
-            <Text className={selectedState === s ? "text-white text-sm font-medium" : "text-neutral-600 text-sm"}>
-              {s}
+            <Text className={!selectedState ? "text-white text-sm font-medium" : "text-neutral-600 text-sm"}>
+              All states
             </Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          {STATES.map((s) => (
+            <TouchableOpacity
+              key={s}
+              onPress={() => setSelectedState(selectedState === s ? null : s)}
+              className={`mr-2 px-4 py-2 rounded-full border ${
+                selectedState === s ? "bg-primary-500 border-primary-500" : "border-neutral-200 bg-white"
+              }`}
+            >
+              <Text className={selectedState === s ? "text-white text-sm font-medium" : "text-neutral-600 text-sm"}>
+                {s}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Specialization filter */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-6 pb-3">
+          {SPECIALIZATIONS.map((s) => (
+            <TouchableOpacity
+              key={s}
+              onPress={() => setSelectedSpec(selectedSpec === s ? null : s)}
+              className={`mr-2 px-3 py-1.5 rounded-full border ${
+                selectedSpec === s ? "bg-teal-500 border-teal-500" : "border-neutral-200 bg-white"
+              }`}
+            >
+              <Text className={`text-xs font-medium ${selectedSpec === s ? "text-white" : "text-neutral-600"}`}>
+                {s}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Price filter */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-6 pb-3">
+          {MAX_RATES.map(({ label, value }) => (
+            <TouchableOpacity
+              key={value}
+              onPress={() => setSelectedMaxRate(selectedMaxRate === value ? null : value)}
+              className={`mr-2 px-3 py-1.5 rounded-full border ${
+                selectedMaxRate === value ? "bg-amber-500 border-amber-500" : "border-neutral-200 bg-white"
+              }`}
+            >
+              <Text className={`text-xs font-medium ${selectedMaxRate === value ? "text-white" : "text-neutral-600"}`}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <View className="px-6 pt-4">
         {isLoading ? (
@@ -76,6 +136,8 @@ export default function TherapistListScreen() {
             sessionRate: number;
             specializations: string[];
             state?: string;
+            avgRating?: number;
+            reviewCount?: number;
             user: { phone: string };
           }) => (
             <TouchableOpacity
@@ -88,6 +150,15 @@ export default function TherapistListScreen() {
                   <Text className="font-semibold text-neutral-900">{t.user.phone}</Text>
                   {t.state && (
                     <Text className="text-neutral-400 text-xs mt-0.5">📍 {t.state}</Text>
+                  )}
+                  {(t.reviewCount ?? 0) > 0 && (
+                    <View className="flex-row items-center mt-1 gap-1">
+                      <Star size={12} color="#f59e0b" fill="#f59e0b" />
+                      <Text className="text-amber-600 text-xs font-medium">
+                        {(t.avgRating ?? 0).toFixed(1)}
+                      </Text>
+                      <Text className="text-neutral-400 text-xs">({t.reviewCount})</Text>
+                    </View>
                   )}
                   <Text className="text-neutral-500 text-sm mt-1" numberOfLines={2}>{t.bio}</Text>
                   <View className="flex-row flex-wrap gap-1 mt-2">

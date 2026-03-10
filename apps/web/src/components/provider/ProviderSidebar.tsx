@@ -6,6 +6,7 @@ import { LayoutDashboard, Calendar, Users, DollarSign, LogOut, MessageSquare } f
 import { cn } from "@wecare4you/ui";
 import { useAuthStore } from "@/lib/store";
 import { api } from "@/lib/api";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 const THERAPIST_NAV = [
   { href: "/therapist/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -35,11 +36,14 @@ export function ProviderSidebar({ role }: { role: "therapist" | "buddy" }) {
 
   return (
     <aside className="w-64 bg-white border-r border-neutral-200 flex flex-col">
-      <div className="p-6 border-b border-neutral-200">
-        <h1 className="text-xl font-bold text-primary-600">WeCare4You</h1>
-        <p className="text-xs text-neutral-500 mt-0.5">
-          {role === "therapist" ? "Therapist Portal" : "Talk Buddy Portal"}
-        </p>
+      <div className="p-6 border-b border-neutral-200 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-primary-600">WeCare4You</h1>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            {role === "therapist" ? "Therapist Portal" : "Talk Buddy Portal"}
+          </p>
+        </div>
+        <NotificationBell />
       </div>
 
       <nav className="flex-1 p-4 space-y-1">

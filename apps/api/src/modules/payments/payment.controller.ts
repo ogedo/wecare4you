@@ -1,4 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
+import type { Server } from "socket.io";
 import crypto from "crypto";
 import { prisma } from "../../lib/prisma";
 import { env } from "../../lib/env";
@@ -12,6 +13,16 @@ import {
   generateReference,
 } from "../../lib/paystack";
 import { InitializePaymentSchema, OnboardBankSchema } from "@wecare4you/types";
+import { NotificationService } from "../notifications/notification.service";
+
+function formatNaira(kobo: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
+}
 
 export class PaymentController {
   async initialize(req: FastifyRequest, reply: FastifyReply) {
@@ -101,13 +112,50 @@ export class PaymentController {
         where: { paystackReference: reference },
         data: { status: "COMPLETED", paidAt: new Date() },
       });
-      // Confirm appointment
-      const payment = await prisma.payment.findUnique({ where: { paystackReference: reference } });
+      const payment = await prisma.payment.findUnique({
+        where: { paystackReference: reference },
+        include: {
+          appointment: {
+            include: {
+              patient: { include: { user: true } },
+              therapist: { include: { user: true } },
+              buddy: { include: { user: true } },
+            },
+          },
+        },
+      });
       if (payment) {
         await prisma.appointment.update({
           where: { id: payment.appointmentId },
           data: { status: "CONFIRMED" },
         });
+
+        // N1 + N6: Notify patient and provider of confirmation
+        const io = (req.server as unknown as { io: Server }).io;
+        const appt = payment.appointment;
+        const patientUser = appt.patient.user;
+        const providerUser = appt.therapist?.user || appt.buddy?.user;
+        const scheduledStr = appt.scheduledAt.toLocaleString("en-NG");
+
+        await NotificationService.notify(io, {
+          userId: patientUser.id,
+          userEmail: patientUser.email ?? undefined,
+          type: "APPOINTMENT_CONFIRMED_PATIENT",
+          payload: { appointmentId: payment.appointmentId },
+          emailSubject: "Your session is confirmed",
+          emailHtml: `<p>Your session with <strong>${providerUser?.phone ?? "your provider"}</strong> is confirmed for ${scheduledStr}.</p>`,
+        });
+
+        if (providerUser) {
+          await NotificationService.notify(io, {
+            userId: providerUser.id,
+            userEmail: providerUser.email ?? undefined,
+            type: "APPOINTMENT_CONFIRMED_PROVIDER",
+            payload: { appointmentId: payment.appointmentId },
+            emailSubject: "Payment received — session confirmed",
+            emailHtml: `<p>Payment received! Session with <strong>${patientUser.phone}</strong> on ${scheduledStr} confirmed. Earnings: <strong>${formatNaira(payment.providerAmount)}</strong></p>`,
+          });
+        }
       }
     }
 
@@ -130,7 +178,18 @@ export class PaymentController {
 
     if (event.event === "charge.success") {
       const reference = event.data.reference as string;
-      const payment = await prisma.payment.findUnique({ where: { paystackReference: reference } });
+      const payment = await prisma.payment.findUnique({
+        where: { paystackReference: reference },
+        include: {
+          appointment: {
+            include: {
+              patient: { include: { user: true } },
+              therapist: { include: { user: true } },
+              buddy: { include: { user: true } },
+            },
+          },
+        },
+      });
 
       if (payment && payment.status !== "COMPLETED") {
         await prisma.payment.update({
@@ -141,15 +200,71 @@ export class PaymentController {
           where: { id: payment.appointmentId },
           data: { status: "CONFIRMED" },
         });
+
+        // N1 + N6: Notify patient and provider
+        const io = (req.server as unknown as { io: Server }).io;
+        const appt = payment.appointment;
+        const patientUser = appt.patient.user;
+        const providerUser = appt.therapist?.user || appt.buddy?.user;
+        const scheduledStr = appt.scheduledAt.toLocaleString("en-NG");
+
+        await NotificationService.notify(io, {
+          userId: patientUser.id,
+          userEmail: patientUser.email ?? undefined,
+          type: "APPOINTMENT_CONFIRMED_PATIENT",
+          payload: { appointmentId: payment.appointmentId },
+          emailSubject: "Your session is confirmed",
+          emailHtml: `<p>Your session with <strong>${providerUser?.phone ?? "your provider"}</strong> is confirmed for ${scheduledStr}.</p>`,
+        });
+
+        if (providerUser) {
+          await NotificationService.notify(io, {
+            userId: providerUser.id,
+            userEmail: providerUser.email ?? undefined,
+            type: "APPOINTMENT_CONFIRMED_PROVIDER",
+            payload: { appointmentId: payment.appointmentId },
+            emailSubject: "Payment received — session confirmed",
+            emailHtml: `<p>Payment received! Session with <strong>${patientUser.phone}</strong> on ${scheduledStr} confirmed. Earnings: <strong>${formatNaira(payment.providerAmount)}</strong></p>`,
+          });
+        }
       }
     }
 
     if (event.event === "transfer.success") {
       const transferCode = event.data.transfer_code as string;
+      const payments = await prisma.payment.findMany({
+        where: { paystackTransferId: transferCode },
+        include: {
+          appointment: {
+            include: {
+              therapist: { include: { user: true } },
+              buddy: { include: { user: true } },
+            },
+          },
+        },
+      });
+
       await prisma.payment.updateMany({
         where: { paystackTransferId: transferCode },
         data: { payoutSentAt: new Date() },
       });
+
+      // N8: Notify provider of successful payout
+      const io = (req.server as unknown as { io: Server }).io;
+      for (const payment of payments) {
+        const providerUser =
+          payment.appointment.therapist?.user || payment.appointment.buddy?.user;
+        if (providerUser) {
+          await NotificationService.notify(io, {
+            userId: providerUser.id,
+            userEmail: providerUser.email ?? undefined,
+            type: "PAYOUT_SENT",
+            payload: { amount: payment.providerAmount },
+            emailSubject: "Your payout has been sent",
+            emailHtml: `<p>Your payout of <strong>${formatNaira(payment.providerAmount)}</strong> has been sent to your bank account.</p>`,
+          });
+        }
+      }
     }
 
     return reply.send({ received: true });
@@ -199,6 +314,17 @@ export class PaymentController {
     await prisma.payment.update({
       where: { id: payment.id },
       data: { paystackTransferId: transferCode },
+    });
+
+    // N8: Notify provider payout was initiated
+    const io = (req.server as unknown as { io: Server }).io;
+    await NotificationService.notify(io, {
+      userId: providerUser.id,
+      userEmail: providerUser.email ?? undefined,
+      type: "PAYOUT_SENT",
+      payload: { amount: payment.providerAmount, transferCode },
+      emailSubject: "Your payout has been initiated",
+      emailHtml: `<p>Your payout of <strong>${formatNaira(payment.providerAmount)}</strong> has been initiated and will arrive in your bank account shortly.</p>`,
     });
 
     return reply.send({ success: true, data: { transferCode, amount: payment.providerAmount } });

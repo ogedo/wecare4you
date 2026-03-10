@@ -37,10 +37,17 @@ export async function setupSocketIO(app: FastifyInstance) {
 
   io.on("connection", (socket) => {
     const userId: string = socket.data.userId;
-    app.log.debug(`[Socket] Connected: ${userId}`);
+    const role: string = socket.data.role;
+    app.log.debug(`[Socket] Connected: ${userId} (${role})`);
 
     // Each user joins their personal room for direct notifications
     socket.join(`user:${userId}`);
+
+    // Crisis counselors join the counselors:online room to receive incoming crisis sessions
+    if (role === "CRISIS_COUNSELOR") {
+      socket.join("counselors:online");
+      app.log.debug(`[Socket] Counselor ${userId} joined counselors:online`);
+    }
 
     // Join a conversation channel
     socket.on("join:conversation", (conversationId: string) => {
@@ -50,6 +57,16 @@ export async function setupSocketIO(app: FastifyInstance) {
     // Leave a conversation channel
     socket.on("leave:conversation", (conversationId: string) => {
       socket.leave(`conv:${conversationId}`);
+    });
+
+    // Join a crisis session room (both patient and counselor call this after connecting)
+    socket.on("join:crisis", (sessionId: string) => {
+      socket.join(`crisis:${sessionId}`);
+    });
+
+    // Leave a crisis session room
+    socket.on("leave:crisis", (sessionId: string) => {
+      socket.leave(`crisis:${sessionId}`);
     });
 
     // Real-time message send (saves to DB + broadcasts)
@@ -96,6 +113,46 @@ export async function setupSocketIO(app: FastifyInstance) {
     socket.on("typing:stop", (conversationId: string) => {
       socket.to(`conv:${conversationId}`).emit("typing:stop", { userId });
     });
+
+    // Crisis real-time messages (persisted to CrisisMessage table)
+    socket.on(
+      "crisis:message:send",
+      async (data: { sessionId: string; content: string }, ack?: (msg: unknown) => void) => {
+        try {
+          // Verify caller is part of this session
+          const session = await prisma.crisisSession.findUnique({
+            where: { id: data.sessionId },
+            include: { counselor: true },
+          });
+
+          if (!session) {
+            socket.emit("error", { message: "Session not found" });
+            return;
+          }
+
+          const isCounselor = session.counselor?.userId === userId;
+          const isPatient = session.patientId === userId;
+
+          if (!isPatient && !isCounselor) {
+            socket.emit("error", { message: "Not authorised" });
+            return;
+          }
+
+          const message = await prisma.crisisMessage.create({
+            data: {
+              crisisSessionId: data.sessionId,
+              senderId: userId,
+              content: data.content.trim(),
+            },
+          });
+
+          io.to(`crisis:${data.sessionId}`).emit("crisis:message:new", message);
+          ack?.(message);
+        } catch {
+          socket.emit("error", { message: "Failed to send crisis message" });
+        }
+      }
+    );
 
     socket.on("disconnect", (reason) => {
       app.log.debug(`[Socket] Disconnected: ${userId} (${reason})`);

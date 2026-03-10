@@ -28,7 +28,7 @@ const weeklySchedule = {
 async function upsertUser(data: {
   phone: string;
   email: string;
-  role: "ADMIN" | "THERAPIST" | "TALK_BUDDY" | "PATIENT";
+  role: "ADMIN" | "THERAPIST" | "TALK_BUDDY" | "PATIENT" | "CRISIS_COUNSELOR";
 }) {
   const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
   if (existing) {
@@ -125,15 +125,67 @@ async function main() {
     console.log("  ✓  PatientProfile created");
   }
 
+  // ── Crisis Counselor ─────────────────────────────────────────────────────
+  const counselor = await upsertUser({
+    phone: "+2348000000005",
+    email: "counselor@wecare4you.ng",
+    role: "CRISIS_COUNSELOR",
+  });
+
+  const existingCounselorProfile = await prisma.crisisCounselorProfile.findUnique({
+    where: { userId: counselor.id },
+  });
+  if (!existingCounselorProfile) {
+    await prisma.crisisCounselorProfile.create({
+      data: {
+        userId: counselor.id,
+        bio: "Trained crisis counselor and mental health first responder with 5 years of experience in acute psychological support.",
+        isApproved: true,
+      },
+    });
+    console.log("  ✓  CrisisCounselorProfile created");
+  }
+
+  // ── Session Packages ─────────────────────────────────────────────────────
+  const therapistUser = await prisma.user.findUnique({ where: { email: "therapist@wecare4you.ng" } });
+  const buddyUser = await prisma.user.findUnique({ where: { email: "buddy@wecare4you.ng" } });
+
+  if (therapistUser) {
+    const existingPkgs = await prisma.sessionPackage.count({ where: { providerId: therapistUser.id } });
+    if (existingPkgs === 0) {
+      await prisma.sessionPackage.createMany({
+        data: [
+          { providerId: therapistUser.id, providerType: "THERAPIST", name: "Starter Pack", sessions: 3, priceKobo: 4800000 },
+          { providerId: therapistUser.id, providerType: "THERAPIST", name: "Monthly Bundle", sessions: 6, priceKobo: 8400000 },
+        ],
+      });
+      console.log("  ✓  Therapist session packages created");
+    }
+  }
+
+  if (buddyUser) {
+    const existingPkgs = await prisma.sessionPackage.count({ where: { providerId: buddyUser.id } });
+    if (existingPkgs === 0) {
+      await prisma.sessionPackage.createMany({
+        data: [
+          { providerId: buddyUser.id, providerType: "TALK_BUDDY", name: "Intro Pack", sessions: 4, priceKobo: 1600000 },
+          { providerId: buddyUser.id, providerType: "TALK_BUDDY", name: "Support Bundle", sessions: 8, priceKobo: 2800000 },
+        ],
+      });
+      console.log("  ✓  Buddy session packages created");
+    }
+  }
+
   console.log(`
 ── All accounts use password: ${PASSWORD} ──
 
-  Role        Email                        Phone
-  ─────────── ─────────────────────────── ────────────────
-  Admin       admin@wecare4you.ng         +2348000000001
-  Therapist   therapist@wecare4you.ng     +2348000000002
-  Talk Buddy  buddy@wecare4you.ng         +2348000000003
-  Patient     patient@wecare4you.ng       +2348000000004
+  Role             Email                          Phone
+  ──────────────── ─────────────────────────────  ────────────────
+  Admin            admin@wecare4you.ng            +2348000000001
+  Therapist        therapist@wecare4you.ng        +2348000000002
+  Talk Buddy       buddy@wecare4you.ng            +2348000000003
+  Patient          patient@wecare4you.ng          +2348000000004
+  Crisis Counselor counselor@wecare4you.ng        +2348000000005
 `);
 }
 

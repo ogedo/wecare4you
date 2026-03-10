@@ -9,6 +9,10 @@ import { sessionRoutes } from "../modules/sessions/session.routes";
 import { messageRoutes } from "../modules/messages/message.routes";
 import { paymentRoutes } from "../modules/payments/payment.routes";
 import { adminRoutes } from "../modules/admin/admin.routes";
+import { notificationRoutes } from "../modules/notifications/notification.routes";
+import { reviewRoutes } from "../modules/reviews/review.routes";
+import { crisisRoutes } from "../modules/crisis/crisis.routes";
+import { packageRoutes } from "../modules/packages/package.routes";
 
 export async function registerRoutes(app: FastifyInstance) {
   app.get("/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
@@ -23,4 +27,8 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(messageRoutes, { prefix: "" });
   await app.register(paymentRoutes, { prefix: "/payments" });
   await app.register(adminRoutes, { prefix: "/admin" });
+  await app.register(notificationRoutes, { prefix: "/notifications" });
+  await app.register(reviewRoutes, { prefix: "/reviews" });
+  await app.register(crisisRoutes, { prefix: "/crisis" });
+  await app.register(packageRoutes, { prefix: "/packages" });
 }

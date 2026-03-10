@@ -18,6 +18,8 @@ export default function Index() {
       router.replace("/(therapist)/home");
     } else if (user.role === "TALK_BUDDY") {
       router.replace("/(buddy)/home");
+    } else if (user.role === "CRISIS_COUNSELOR") {
+      router.replace("/(counselor)/queue");
     }
   }, [hydrated, user, router]);
 

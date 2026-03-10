@@ -1,6 +1,8 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
+import type { Server } from "socket.io";
 import { prisma } from "../../lib/prisma";
 import { CreateAppointmentSchema, UpdateAppointmentStatusSchema } from "@wecare4you/types";
+import { NotificationService } from "../notifications/notification.service";
 
 export class AppointmentController {
   async create(req: FastifyRequest, reply: FastifyReply) {
@@ -25,8 +27,28 @@ export class AppointmentController {
         duration: body.data.duration,
         type: body.data.type,
       },
-      include: { patient: true, therapist: true, buddy: true },
+      include: {
+        patient: { include: { user: true } },
+        therapist: { include: { user: true } },
+        buddy: { include: { user: true } },
+      },
     });
+
+    // N5: Notify provider of new booking
+    const providerUser = appointment.therapist?.user || appointment.buddy?.user;
+    if (providerUser) {
+      const io = (req.server as unknown as { io: Server }).io;
+      const patientUser = appointment.patient.user;
+      const scheduledStr = appointment.scheduledAt.toLocaleString("en-NG");
+      await NotificationService.notify(io, {
+        userId: providerUser.id,
+        userEmail: providerUser.email ?? undefined,
+        type: "NEW_BOOKING",
+        payload: { appointmentId: appointment.id },
+        emailSubject: "New booking received",
+        emailHtml: `<p>New booking: <strong>${patientUser.phone}</strong> booked a ${appointment.duration}min ${appointment.type.toLowerCase()} session on ${scheduledStr}.</p>`,
+      });
+    }
 
     return reply.code(201).send({ success: true, data: appointment });
   }
@@ -63,6 +85,7 @@ export class AppointmentController {
           buddy: { include: { user: { select: { phone: true, email: true } } } },
           session: true,
           payment: { select: { paystackReference: true, amount: true, status: true } },
+          review: { select: { id: true, rating: true } },
         },
         orderBy: { scheduledAt: "desc" },
       }),
@@ -85,6 +108,7 @@ export class AppointmentController {
         buddy: { include: { user: { select: { phone: true, email: true } } } },
         session: true,
         payment: true,
+        review: { select: { id: true, rating: true, comment: true } },
       },
     });
     if (!appointment) return reply.code(404).send({ success: false, error: "Appointment not found" });

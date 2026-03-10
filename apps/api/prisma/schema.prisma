@@ -11,7 +11,14 @@ enum Role {
   PATIENT
   THERAPIST
   TALK_BUDDY
+  CRISIS_COUNSELOR
   ADMIN
+}
+
+enum CrisisStatus {
+  WAITING
+  ACTIVE
+  ENDED
 }
 
 enum AppointmentStatus {
@@ -48,11 +55,13 @@ model User {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  patientProfile    PatientProfile?
-  therapistProfile  TherapistProfile?
-  buddyProfile      BuddyProfile?
-  sentMessages      Message[]        @relation("sender")
-  notifications     Notification[]
+  patientProfile          PatientProfile?
+  therapistProfile        TherapistProfile?
+  buddyProfile            BuddyProfile?
+  crisisCounselorProfile  CrisisCounselorProfile?
+  sentMessages            Message[]        @relation("sender")
+  notifications           Notification[]
+  crisisSessionsAsPatient CrisisSession[]  @relation("crisis_patient")
 }
 
 model PatientProfile {
@@ -66,6 +75,7 @@ model PatientProfile {
 
   appointments  Appointment[]  @relation("patient")
   conversations Conversation[] @relation("patient")
+  packages      PatientPackage[]
 }
 
 model TherapistProfile {
@@ -117,6 +127,7 @@ model Appointment {
 
   session Session?
   payment Payment?
+  review  Review?
 }
 
 model Session {
@@ -177,6 +188,96 @@ model Notification {
   payload   Json     @default("{}")
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model CrisisCounselorProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio        String
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sessions CrisisSession[]
+
+  @@map("crisis_counselor_profiles")
+}
+
+model CrisisSession {
+  id          String                   @id @default(cuid())
+  patientId   String
+  patient     User                     @relation("crisis_patient", fields: [patientId], references: [id])
+  counselorId String?
+  counselor   CrisisCounselorProfile?  @relation(fields: [counselorId], references: [id])
+  status      CrisisStatus             @default(WAITING)
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime                 @default(now())
+
+  messages CrisisMessage[]
+
+  @@map("crisis_sessions")
+}
+
+model CrisisMessage {
+  id              String        @id @default(cuid())
+  crisisSessionId String
+  session         CrisisSession @relation(fields: [crisisSessionId], references: [id], onDelete: Cascade)
+  senderId        String
+  content         String
+  sentAt          DateTime      @default(now())
+
+  @@map("crisis_messages")
+}
+
+model Review {
+  id            String      @id @default(cuid())
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  reviewerId    String
+  revieweeId    String
+  rating        Int
+  comment       String?
+  createdAt     DateTime    @default(now())
+
+  @@map("reviews")
+}
+
+enum PatientPackageStatus {
+  PENDING
+  ACTIVE
+  EXHAUSTED
+  REFUNDED
+}
+
+model SessionPackage {
+  id           String           @id @default(cuid())
+  providerId   String
+  providerType String
+  name         String
+  sessions     Int
+  priceKobo    Int
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+
+  purchases PatientPackage[]
+
+  @@map("session_packages")
+}
+
+model PatientPackage {
+  id                String               @id @default(cuid())
+  packageId         String
+  package           SessionPackage       @relation(fields: [packageId], references: [id])
+  patientId         String
+  patient           PatientProfile       @relation(fields: [patientId], references: [id])
+  remainingSessions Int
+  paystackReference String               @unique
+  status            PatientPackageStatus @default(PENDING)
+  purchasedAt       DateTime             @default(now())
+
+  @@map("patient_packages")
 }
 
 model OtpCode {

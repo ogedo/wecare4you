@@ -24,6 +24,9 @@ const envSchema = z.object({
   THERAPIST_COMMISSION_RATE: z.coerce.number().default(0.2),
   BUDDY_COMMISSION_RATE: z.coerce.number().default(0.25),
   MINIMUM_PAYOUT_KOBO: z.coerce.number().default(500000),
+  RESEND_API_KEY: z.string().default(""),
+  EMAIL_FROM: z.string().default("noreply@wecare4you.ng"),
+  ADMIN_EMAIL: z.string().default("admin@wecare4you.ng"),
 });
 
 function loadEnv() {

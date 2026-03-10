@@ -3,9 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { formatNaira } from "@wecare4you/ui";
-import { Calendar, DollarSign } from "lucide-react";
+import { Calendar, DollarSign, Star } from "lucide-react";
+import { useAuthStore } from "@/lib/store";
 
 export default function TherapistDashboard() {
+  const user = useAuthStore((s) => s.user);
+
   const { data: appointments } = useQuery({
     queryKey: ["therapist", "appointments"],
     queryFn: () =>
@@ -17,6 +20,13 @@ export default function TherapistDashboard() {
     queryFn: () => api.get("/admin/payouts").then((r) => r.data.data ?? []),
   });
 
+  const { data: reviews } = useQuery({
+    queryKey: ["reviews", user?.id],
+    queryFn: () =>
+      api.get(`/reviews/provider/${user!.id}`).then((r) => r.data.data),
+    enabled: !!user?.id,
+  });
+
   const totalEarned = (earnings ?? []).reduce(
     (s: number, p: { providerAmount?: number }) => s + (p.providerAmount ?? 0),
     0
@@ -26,7 +36,7 @@ export default function TherapistDashboard() {
     <div>
       <h2 className="text-2xl font-bold mb-6">Welcome back</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-2xl border border-neutral-200 p-6 flex items-start gap-4">
           <div className="bg-primary-50 text-primary-600 p-3 rounded-xl">
             <Calendar className="h-5 w-5" />
@@ -43,6 +53,20 @@ export default function TherapistDashboard() {
           <div>
             <p className="text-sm text-neutral-500">Total earnings</p>
             <p className="text-2xl font-bold mt-1">{formatNaira(totalEarned)}</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-neutral-200 p-6 flex items-start gap-4">
+          <div className="bg-amber-50 text-amber-500 p-3 rounded-xl">
+            <Star className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm text-neutral-500">Avg rating</p>
+            <p className="text-2xl font-bold mt-1">
+              {reviews?.avgRating ? `${reviews.avgRating} / 5` : "—"}
+            </p>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              {reviews?.count ?? 0} review{reviews?.count !== 1 ? "s" : ""}
+            </p>
           </div>
         </div>
       </div>

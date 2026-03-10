@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/store";
 
 interface Message {
   id: string;
+  conversationId: string;
   senderId: string;
   content: string;
   sentAt: string;

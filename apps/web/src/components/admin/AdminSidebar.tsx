@@ -9,6 +9,7 @@ import {
   BarChart3,
   CreditCard,
   LogOut,
+  HeartHandshake,
 } from "lucide-react";
 import { cn } from "@wecare4you/ui";
 import { useAuthStore } from "@/lib/store";
@@ -19,6 +20,7 @@ const NAV = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/therapists", label: "Therapists", icon: UserCheck },
   { href: "/admin/talk-buddies", label: "Talk Buddies", icon: Users },
+  { href: "/admin/crisis-counselors", label: "Crisis Counselors", icon: HeartHandshake },
   { href: "/admin/reports", label: "Revenue", icon: BarChart3 },
   { href: "/admin/payouts", label: "Payouts", icon: CreditCard },
 ];

@@ -101,6 +101,11 @@ export class AuthService {
             create: { bio: "", sessionRate: 0, availability: {} },
           },
         }),
+        ...(params.role === "CRISIS_COUNSELOR" && {
+          crisisCounselorProfile: {
+            create: { bio: "" },
+          },
+        }),
       },
     });
 

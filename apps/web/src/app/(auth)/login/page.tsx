@@ -29,6 +29,8 @@ export default function LoginPage() {
       const res = await api.post("/auth/login", data);
       const { accessToken, user } = res.data.data;
       localStorage.setItem("accessToken", accessToken);
+      // Set session signal cookie so Next.js middleware can detect auth state
+      document.cookie = "wc4y_session=1; path=/; max-age=" + 7 * 24 * 3600;
       setAuth(accessToken, user);
 
       if (user.role === "ADMIN") router.push("/admin/dashboard");

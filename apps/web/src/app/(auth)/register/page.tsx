@@ -79,6 +79,7 @@ export default function RegisterPage() {
       });
       const { accessToken, user } = res.data.data;
       localStorage.setItem("accessToken", accessToken);
+      document.cookie = "wc4y_session=1; path=/; max-age=" + 7 * 24 * 3600;
       setAuth(accessToken, user);
       router.push("/onboarding");
     } catch (e: unknown) {

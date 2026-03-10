@@ -14,6 +14,7 @@ const ROLES = [
   { value: "PATIENT", label: "I need support", sub: "Talk to therapists or buddies" },
   { value: "THERAPIST", label: "I'm a therapist", sub: "Offer professional therapy" },
   { value: "TALK_BUDDY", label: "I'm a Talk Buddy", sub: "Volunteer peer support" },
+  { value: "CRISIS_COUNSELOR", label: "I'm a Crisis Counselor", sub: "Support patients in acute distress" },
 ];
 
 export default function RegisterScreen() {
@@ -38,6 +39,7 @@ export default function RegisterScreen() {
 
       if (role === "PATIENT") router.replace("/(patient)/home");
       else if (role === "THERAPIST") router.replace("/(therapist)/home");
+      else if (role === "CRISIS_COUNSELOR") router.replace("/(counselor)/queue");
       else router.replace("/(buddy)/home");
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };

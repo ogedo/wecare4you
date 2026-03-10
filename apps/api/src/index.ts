@@ -4,6 +4,7 @@ import { env } from "./lib/env";
 import { registerPlugins } from "./plugins";
 import { registerRoutes } from "./routes";
 import { setupSocketIO } from "./plugins/socket";
+import { registerReminderJob } from "./jobs/reminder.job";
 
 async function main() {
   const app = Fastify({
@@ -25,6 +26,9 @@ async function main() {
   try {
     await app.listen({ port: env.API_PORT, host: env.API_HOST });
     app.log.info(`WeCare4You API running on ${env.API_HOST}:${env.API_PORT}`);
+
+    // Start cron jobs after server is up (io is available)
+    registerReminderJob(app);
   } catch (err) {
     app.log.error(err);
     process.exit(1);

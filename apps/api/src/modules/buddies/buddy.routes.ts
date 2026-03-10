@@ -8,7 +8,11 @@ export async function buddyRoutes(app: FastifyInstance) {
   app.get("/", (req, reply) => ctrl.list(req, reply));
   app.get("/:id", (req, reply) => ctrl.getById(req, reply));
   app.get("/:id/availability", (req, reply) => ctrl.getAvailability(req, reply));
+  app.get("/:id/slots", (req, reply) => ctrl.getSlots(req, reply));
 
+  app.get("/me/profile", { preHandler: requireRole("TALK_BUDDY") }, (req, reply) =>
+    ctrl.getMyProfile(req, reply)
+  );
   app.patch("/me/profile", { preHandler: requireRole("TALK_BUDDY") }, (req, reply) =>
     ctrl.updateProfile(req, reply)
   );

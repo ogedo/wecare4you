@@ -17,6 +17,9 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         set({ accessToken: null, user: null });
         localStorage.removeItem("accessToken");
+        if (typeof document !== "undefined") {
+          document.cookie = "wc4y_session=; path=/; max-age=0";
+        }
       },
     }),
     { name: "wecare4you-auth" }

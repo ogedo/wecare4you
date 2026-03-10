@@ -28,6 +28,7 @@ export default function RootLayout() {
         <Stack.Screen name="(patient)" />
         <Stack.Screen name="(therapist)" />
         <Stack.Screen name="(buddy)" />
+        <Stack.Screen name="(counselor)" />
       </Stack>
     </QueryClientProvider>
   );

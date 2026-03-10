@@ -12,6 +12,13 @@ export async function adminRoutes(app: FastifyInstance) {
     ctrl.approveTherapist(req, reply)
   );
   app.patch("/buddies/:id/approve", adminOnly, (req, reply) => ctrl.approveBuddy(req, reply));
+  app.get("/crisis-counselors", adminOnly, (req, reply) =>
+    ctrl.listCrisisCounselors(req, reply)
+  );
+  app.patch("/crisis-counselors/:id/approve", adminOnly, (req, reply) =>
+    ctrl.approveCrisisCounselor(req, reply)
+  );
   app.get("/revenue", adminOnly, (req, reply) => ctrl.getRevenue(req, reply));
   app.get("/payouts", adminOnly, (req, reply) => ctrl.getPayouts(req, reply));
+  app.get("/analytics", adminOnly, (req, reply) => ctrl.getAnalytics(req, reply));
 }

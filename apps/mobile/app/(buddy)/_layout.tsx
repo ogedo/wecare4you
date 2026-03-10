@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Home, Calendar, DollarSign } from "lucide-react-native";
+import { Home, Calendar, DollarSign, Settings } from "lucide-react-native";
 
 export default function BuddyLayout() {
   return (
@@ -13,6 +13,7 @@ export default function BuddyLayout() {
       <Tabs.Screen name="home" options={{ title: "Home", tabBarIcon: ({ color, size }) => <Home color={color} size={size} /> }} />
       <Tabs.Screen name="sessions" options={{ title: "Sessions", tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} /> }} />
       <Tabs.Screen name="earnings" options={{ title: "Earnings", tabBarIcon: ({ color, size }) => <DollarSign color={color} size={size} /> }} />
+      <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: ({ color, size }) => <Settings color={color} size={size} /> }} />
     </Tabs>
   );
 }

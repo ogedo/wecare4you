@@ -11,29 +11,66 @@ function formatNaira(kobo: number) {
   }).format(kobo / 100);
 }
 
+function toDateStr(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
 export default function TherapistDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [duration, setDuration] = useState(60);
   const [type, setType] = useState<"VIDEO" | "AUDIO">("VIDEO");
+  const [selectedDate, setSelectedDate] = useState<string>(toDateStr(new Date(Date.now() + 86400000)));
 
   const { data: therapist, isLoading } = useQuery({
     queryKey: ["therapist", id],
     queryFn: () => api.get(`/therapists/${id}`).then((r) => r.data.data),
   });
 
+  const { data: packages = [] } = useQuery<{
+    id: string; name: string; sessions: number; priceKobo: number;
+  }[]>({
+    queryKey: ["therapist-packages", therapist?.user?.id],
+    queryFn: () =>
+      api.get(`/packages?providerId=${therapist.user.id}&providerType=THERAPIST`)
+        .then((r) => r.data.data ?? []),
+    enabled: !!therapist?.user?.id,
+  });
+
+  const buyPackage = useMutation({
+    mutationFn: (pkgId: string) => api.post(`/packages/${pkgId}/purchase`),
+    onSuccess: (res) => {
+      const { authorizationUrl } = res.data.data;
+      router.push({
+        pathname: "/(patient)/session/payment",
+        params: { url: authorizationUrl, appointmentId: "pkg" },
+      });
+    },
+  });
+
+  const { data: slots = [], isFetching: slotsLoading } = useQuery<{ time: string; available: boolean }[]>({
+    queryKey: ["therapist-slots", id, selectedDate, duration],
+    queryFn: () =>
+      api.get(`/therapists/${id}/slots?date=${selectedDate}&duration=${duration}`)
+        .then((r) => r.data.data ?? []),
+    enabled: !!id,
+  });
+
   const book = useMutation({
-    mutationFn: () =>
-      api.post("/appointments", {
+    mutationFn: () => {
+      const [hours, minutes] = selectedSlot!.split(":").map(Number);
+      const dt = new Date(selectedDate);
+      dt.setHours(hours, minutes, 0, 0);
+      return api.post("/appointments", {
         therapistId: id,
-        scheduledAt: selectedSlot,
+        scheduledAt: dt.toISOString(),
         duration,
         type,
-      }),
+      });
+    },
     onSuccess: async (res) => {
       const appointmentId = res.data.data.id;
-      // Initialize payment
       const payRes = await api.post("/payments/initialize", { appointmentId });
       const { authorizationUrl } = payRes.data.data;
       router.push({
@@ -51,17 +88,11 @@ export default function TherapistDetailScreen() {
     );
   }
 
-  // Generate demo time slots (next 7 days, 9am-5pm)
-  const slots: string[] = [];
-  for (let d = 1; d <= 3; d++) {
-    const base = new Date();
-    base.setDate(base.getDate() + d);
-    for (const h of [9, 11, 14, 16]) {
-      const s = new Date(base);
-      s.setHours(h, 0, 0, 0);
-      slots.push(s.toISOString());
-    }
-  }
+  // Generate next 7 days for date picker
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() + (i + 1) * 86400000);
+    return { value: toDateStr(d), label: d.toLocaleDateString("en-NG", { weekday: "short", month: "short", day: "numeric" }) };
+  });
 
   return (
     <ScrollView className="flex-1 bg-white">
@@ -98,6 +129,34 @@ export default function TherapistDetailScreen() {
           </View>
         </View>
 
+        {/* Session Packages */}
+        {packages.length > 0 && (
+          <View className="mb-6">
+            <Text className="font-semibold text-neutral-900 mb-3">Session Bundles</Text>
+            <Text className="text-neutral-500 text-xs mb-3">Save when you buy multiple sessions upfront</Text>
+            {packages.map((pkg) => {
+              const perSession = Math.round(pkg.priceKobo / pkg.sessions);
+              return (
+                <View key={pkg.id} className="flex-row justify-between items-center border border-primary-200 bg-primary-50 rounded-2xl px-4 py-3 mb-2">
+                  <View>
+                    <Text className="font-semibold text-neutral-900">{pkg.name}</Text>
+                    <Text className="text-neutral-500 text-xs mt-0.5">
+                      {pkg.sessions} sessions · {formatNaira(perSession)}/session
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => buyPackage.mutate(pkg.id)}
+                    disabled={buyPackage.isPending}
+                    className="bg-primary-500 rounded-xl px-3 py-2"
+                  >
+                    <Text className="text-white text-xs font-semibold">{formatNaira(pkg.priceKobo)}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         {/* Session type */}
         <Text className="font-semibold text-neutral-900 mb-3">Session type</Text>
         <View className="flex-row gap-3 mb-6">
@@ -123,7 +182,7 @@ export default function TherapistDetailScreen() {
           {[30, 60].map((d) => (
             <TouchableOpacity
               key={d}
-              onPress={() => setDuration(d)}
+              onPress={() => { setDuration(d); setSelectedSlot(null); }}
               className={`flex-1 py-3 rounded-2xl border-2 items-center ${
                 duration === d ? "border-primary-500 bg-primary-50" : "border-neutral-200"
               }`}
@@ -135,31 +194,60 @@ export default function TherapistDetailScreen() {
           ))}
         </View>
 
+        {/* Date picker */}
+        <Text className="font-semibold text-neutral-900 mb-3">Choose a date</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+          {dates.map((d) => (
+            <TouchableOpacity
+              key={d.value}
+              onPress={() => { setSelectedDate(d.value); setSelectedSlot(null); }}
+              className={`mr-2 px-4 py-2 rounded-xl border ${
+                selectedDate === d.value ? "border-primary-500 bg-primary-50" : "border-neutral-200"
+              }`}
+            >
+              <Text className={`text-xs font-medium ${selectedDate === d.value ? "text-primary-700" : "text-neutral-600"}`}>
+                {d.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         {/* Time slots */}
-        <Text className="font-semibold text-neutral-900 mb-3">Choose a time</Text>
-        <View className="flex-row flex-wrap gap-2 mb-6">
-          {slots.map((slot) => {
-            const d = new Date(slot);
-            const label = d.toLocaleDateString("en-NG", { weekday: "short", month: "short", day: "numeric" });
-            const time = d.toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" });
-            return (
+        <Text className="font-semibold text-neutral-900 mb-3">Available times</Text>
+        {slotsLoading ? (
+          <ActivityIndicator color="#2a9d7f" className="my-4" />
+        ) : slots.length === 0 ? (
+          <Text className="text-neutral-400 text-sm mb-6">No available slots on this day</Text>
+        ) : (
+          <View className="flex-row flex-wrap gap-2 mb-6">
+            {slots.map((slot) => (
               <TouchableOpacity
-                key={slot}
-                onPress={() => setSelectedSlot(slot)}
-                className={`px-3 py-2 rounded-xl border ${
-                  selectedSlot === slot ? "border-primary-500 bg-primary-50" : "border-neutral-200"
+                key={slot.time}
+                onPress={() => slot.available && setSelectedSlot(slot.time)}
+                disabled={!slot.available}
+                className={`px-4 py-2.5 rounded-xl border ${
+                  !slot.available
+                    ? "border-neutral-100 bg-neutral-50 opacity-40"
+                    : selectedSlot === slot.time
+                    ? "border-primary-500 bg-primary-50"
+                    : "border-neutral-200"
                 }`}
               >
-                <Text className={`text-xs font-medium ${selectedSlot === slot ? "text-primary-700" : "text-neutral-600"}`}>
-                  {label}
-                </Text>
-                <Text className={`text-xs ${selectedSlot === slot ? "text-primary-500" : "text-neutral-400"}`}>
-                  {time}
+                <Text
+                  className={`text-sm font-medium ${
+                    !slot.available
+                      ? "text-neutral-300"
+                      : selectedSlot === slot.time
+                      ? "text-primary-700"
+                      : "text-neutral-600"
+                  }`}
+                >
+                  {slot.time}
                 </Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
+            ))}
+          </View>
+        )}
 
         <TouchableOpacity
           onPress={() => book.mutate()}

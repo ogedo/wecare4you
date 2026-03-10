@@ -17,7 +17,7 @@ export const VerifyOtpSchema = z.object({
 export const RegisterSchema = z.object({
   phone: z.string(),
   otpToken: z.string(),     // short-lived token issued after OTP verify
-  role: z.enum(["PATIENT", "THERAPIST", "TALK_BUDDY"]),
+  role: z.enum(["PATIENT", "THERAPIST", "TALK_BUDDY", "CRISIS_COUNSELOR"]),
   email: z.string().email().optional(),
   password: z.string().min(8).optional(),
 });

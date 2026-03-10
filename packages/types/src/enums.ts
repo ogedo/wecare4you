@@ -3,6 +3,7 @@ export enum Role {
   THERAPIST = "THERAPIST",
   TALK_BUDDY = "TALK_BUDDY",
   ADMIN = "ADMIN",
+  CRISIS_COUNSELOR = "CRISIS_COUNSELOR",
 }
 
 export enum AppointmentStatus {

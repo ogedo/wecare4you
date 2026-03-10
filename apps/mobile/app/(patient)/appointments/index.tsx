@@ -19,6 +19,7 @@ interface Appointment {
   therapist?: { user: { phone: string } };
   buddy?: { user: { phone: string } };
   payment?: { status: string; paystackReference?: string };
+  review?: { id: string } | null;
 }
 
 export default function AppointmentsScreen() {
@@ -62,6 +63,7 @@ export default function AppointmentsScreen() {
             const needsPayment =
               a.status === "PENDING" &&
               (!a.payment || a.payment.status !== "COMPLETED");
+            const canReview = a.status === "COMPLETED" && !a.review;
 
             return (
               <View
@@ -113,6 +115,20 @@ export default function AppointmentsScreen() {
                     className="mt-3 bg-primary-500 rounded-xl py-2.5 items-center"
                   >
                     <Text className="text-white text-sm font-semibold">Join Session</Text>
+                  </TouchableOpacity>
+                )}
+
+                {canReview && (
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(patient)/appointments/review",
+                        params: { appointmentId: a.id },
+                      })
+                    }
+                    className="mt-3 bg-amber-50 border border-amber-200 rounded-xl py-2.5 items-center"
+                  >
+                    <Text className="text-amber-700 text-sm font-semibold">⭐ Rate Session</Text>
                   </TouchableOpacity>
                 )}
               </View>

@@ -1,6 +1,8 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
+import type { Server } from "socket.io";
 import { prisma } from "../../lib/prisma";
 import { createRoom, createMeetingToken, deleteRoom } from "../../lib/daily";
+import { NotificationService } from "../notifications/notification.service";
 
 export class SessionController {
   async start(req: FastifyRequest, reply: FastifyReply) {
@@ -88,14 +90,34 @@ export class SessionController {
       data: { endedAt: new Date() },
     });
 
-    // Mark appointment completed
-    await prisma.appointment.update({
+    // Mark appointment completed and fetch patient info for notification
+    const appointment = await prisma.appointment.update({
       where: { id: session.appointmentId },
       data: { status: "COMPLETED" },
+      include: {
+        patient: { include: { user: true } },
+        therapist: { include: { user: true } },
+        buddy: { include: { user: true } },
+      },
     });
 
     // Clean up Daily.co room
     await deleteRoom(session.dailyRoomName).catch(() => {});
+
+    // N3: Notify patient that session ended with rating CTA
+    const io = (req.server as unknown as { io: Server }).io;
+    const patientUser = appointment.patient.user;
+    const providerUser = appointment.therapist?.user || appointment.buddy?.user;
+    const providerName = providerUser?.phone ?? "your provider";
+
+    await NotificationService.notify(io, {
+      userId: patientUser.id,
+      userEmail: patientUser.email ?? undefined,
+      type: "SESSION_ENDED",
+      payload: { appointmentId: appointment.id },
+      emailSubject: "Your session is complete",
+      emailHtml: `<p>Your session with <strong>${providerName}</strong> is complete. Open the app to rate your experience.</p>`,
+    });
 
     return reply.send({ success: true, data: session });
   }

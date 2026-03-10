@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { AuthService } from "./auth.service";
 import { SendOtpSchema, VerifyOtpSchema, RegisterSchema, LoginSchema } from "@wecare4you/types";
 import { env } from "../../lib/env";
+import { sendEmail } from "../../lib/email";
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -66,6 +67,17 @@ export class AuthController {
       await this.service.storeRefreshToken(user.id, refreshToken);
       reply.setCookie("refreshToken", refreshToken, COOKIE_OPTS);
       reply.setCookie("wc4y_session", "1", SESSION_SIGNAL_OPTS);
+
+      // N10: Notify admin of new provider registration
+      if (user.role === "THERAPIST" || user.role === "TALK_BUDDY" || user.role === "CRISIS_COUNSELOR") {
+        const roleLabel = user.role === "THERAPIST" ? "Therapist" : user.role === "TALK_BUDDY" ? "Talk Buddy" : "Crisis Counselor";
+        await sendEmail({
+          to: env.ADMIN_EMAIL,
+          subject: `New ${roleLabel} pending approval: ${user.phone}`,
+          html: `<p>A new <strong>${roleLabel}</strong> has registered and is awaiting approval.<br/>Phone: <strong>${user.phone}</strong><br/>Email: ${user.email ?? "N/A"}</p>`,
+        }).catch(() => {});
+      }
+
       return reply.code(201).send({
         success: true,
         data: {
