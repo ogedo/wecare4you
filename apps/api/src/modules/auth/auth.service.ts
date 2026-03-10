@@ -3,7 +3,6 @@ import { prisma } from "../../lib/prisma";
 import { redis } from "../../lib/redis";
 import { sendOtp, generateOtpCode } from "../../lib/termii";
 import { env } from "../../lib/env";
-import { Role } from "@wecare4you/types";
 
 const OTP_EXPIRY_SECONDS = 600; // 10 minutes
 const OTP_TOKEN_EXPIRY_SECONDS = 300; // 5 minutes (after verify → register window)
@@ -58,7 +57,7 @@ export class AuthService {
   async register(params: {
     phone: string;
     otpToken: string;
-    role: Role;
+    role: string;
     email?: string;
     password?: string;
   }) {
