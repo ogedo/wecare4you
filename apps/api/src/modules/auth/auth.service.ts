@@ -77,7 +77,7 @@ export class AuthService {
         phone: params.phone,
         email: params.email,
         passwordHash,
-        role: params.role,
+        role: params.role as import("@prisma/client").Role,
         isVerified: true,
         // Create role-specific profile
         ...(params.role === "PATIENT" && {
