@@ -62,7 +62,7 @@ export class AuthController {
       return reply.code(400).send({ success: false, error: body.error.flatten().fieldErrors });
     }
     try {
-      const user = await this.service.register(body.data);
+      const user = await this.service.register(body.data as { phone: string; otpToken: string; role: string; email?: string; password?: string });
       const { accessToken, refreshToken } = this.issueTokens(user.id, user.role);
       await this.service.storeRefreshToken(user.id, refreshToken);
       reply.setCookie("refreshToken", refreshToken, COOKIE_OPTS);
