@@ -171,8 +171,8 @@ export class AdminController {
       orderBy: { paidAt: "desc" },
     });
 
-    const totalAmount = payments.reduce((s, p) => s + p.amount, 0);
-    const totalCommission = payments.reduce((s, p) => s + p.platformFee, 0);
+    const totalAmount = payments.reduce((s: number, p: { amount: number }) => s + p.amount, 0);
+    const totalCommission = payments.reduce((s: number, p: { platformFee: number }) => s + p.platformFee, 0);
 
     return reply.send({
       success: true,

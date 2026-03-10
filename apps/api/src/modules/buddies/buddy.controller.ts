@@ -29,7 +29,7 @@ export class BuddyController {
     ]);
 
     // Augment with avg ratings
-    const userIds = buddies.map((b) => b.user.id);
+    const userIds = buddies.map((b: { user: { id: string } }) => b.user.id);
     const ratingsAgg = await prisma.review.groupBy({
       by: ["revieweeId"],
       where: { revieweeId: { in: userIds } },
@@ -43,7 +43,7 @@ export class BuddyController {
       ])
     );
 
-    const data = buddies.map((b) => ({
+    const data = buddies.map((b: { user: { id: string } }) => ({
       ...b,
       avgRating: ratingsMap.get(b.user.id)?.avgRating ?? 0,
       reviewCount: ratingsMap.get(b.user.id)?.reviewCount ?? 0,

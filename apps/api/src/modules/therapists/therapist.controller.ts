@@ -29,7 +29,7 @@ export class TherapistController {
     ]);
 
     // Augment with avg ratings
-    const userIds = therapists.map((t) => t.user.id);
+    const userIds = therapists.map((t: { user: { id: string } }) => t.user.id);
     const ratingsAgg = await prisma.review.groupBy({
       by: ["revieweeId"],
       where: { revieweeId: { in: userIds } },
@@ -43,7 +43,7 @@ export class TherapistController {
       ])
     );
 
-    const data = therapists.map((t) => ({
+    const data = therapists.map((t: { user: { id: string } }) => ({
       ...t,
       avgRating: ratingsMap.get(t.user.id)?.avgRating ?? 0,
       reviewCount: ratingsMap.get(t.user.id)?.reviewCount ?? 0,
