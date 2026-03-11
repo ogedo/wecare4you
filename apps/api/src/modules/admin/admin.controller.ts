@@ -95,6 +95,156 @@ export class AdminController {
     return reply.send({ success: true, data: therapist });
   }
 
+  async listTherapists(req: FastifyRequest, reply: FastifyReply) {
+    const { status, page = "1", limit = "20" } = req.query as Record<string, string>;
+    const pageNum = parseInt(page, 10);
+    const limitNum = Math.min(parseInt(limit, 10), 50);
+    const where = status === "pending" ? { isApproved: false } : status === "approved" ? { isApproved: true } : {};
+
+    const [total, therapists] = await Promise.all([
+      prisma.therapistProfile.count({ where }),
+      prisma.therapistProfile.findMany({
+        where,
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+        include: {
+          user: { select: { id: true, phone: true, email: true, isActive: true, isVerified: true, createdAt: true } },
+          _count: { select: { appointments: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const therapistIds = therapists.map((t) => t.id);
+    const ratings = await prisma.review.groupBy({
+      by: ["revieweeId"],
+      where: { revieweeId: { in: therapists.map((t) => t.userId) } },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    const ratingMap = new Map(ratings.map((r) => [r.revieweeId, { avg: r._avg.rating, count: r._count.rating }]));
+
+    const data = therapists.map((t) => ({
+      ...t,
+      avgRating: ratingMap.get(t.userId)?.avg ?? null,
+      reviewCount: ratingMap.get(t.userId)?.count ?? 0,
+      totalSessions: t._count.appointments,
+    }));
+
+    return reply.send({ success: true, data, meta: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) } });
+  }
+
+  async getTherapist(req: FastifyRequest, reply: FastifyReply) {
+    const { id } = req.params as { id: string };
+    const therapist = await prisma.therapistProfile.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, phone: true, email: true, isActive: true, isVerified: true, createdAt: true } },
+        _count: { select: { appointments: true } },
+      },
+    });
+    if (!therapist) return reply.code(404).send({ success: false, error: "Therapist not found" });
+
+    const rating = await prisma.review.aggregate({
+      where: { revieweeId: therapist.userId },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    return reply.send({
+      success: true,
+      data: {
+        ...therapist,
+        avgRating: rating._avg.rating ?? null,
+        reviewCount: rating._count.rating,
+        totalSessions: therapist._count.appointments,
+      },
+    });
+  }
+
+  async listBuddies(req: FastifyRequest, reply: FastifyReply) {
+    const { status, page = "1", limit = "20" } = req.query as Record<string, string>;
+    const pageNum = parseInt(page, 10);
+    const limitNum = Math.min(parseInt(limit, 10), 50);
+    const where = status === "pending" ? { isApproved: false } : status === "approved" ? { isApproved: true } : {};
+
+    const [total, buddies] = await Promise.all([
+      prisma.buddyProfile.count({ where }),
+      prisma.buddyProfile.findMany({
+        where,
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+        include: {
+          user: { select: { id: true, phone: true, email: true, isActive: true, isVerified: true, createdAt: true } },
+          _count: { select: { appointments: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const ratings = await prisma.review.groupBy({
+      by: ["revieweeId"],
+      where: { revieweeId: { in: buddies.map((b) => b.userId) } },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    const ratingMap = new Map(ratings.map((r) => [r.revieweeId, { avg: r._avg.rating, count: r._count.rating }]));
+
+    const data = buddies.map((b) => ({
+      ...b,
+      avgRating: ratingMap.get(b.userId)?.avg ?? null,
+      reviewCount: ratingMap.get(b.userId)?.count ?? 0,
+      totalSessions: b._count.appointments,
+    }));
+
+    return reply.send({ success: true, data, meta: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) } });
+  }
+
+  async getBuddy(req: FastifyRequest, reply: FastifyReply) {
+    const { id } = req.params as { id: string };
+    const buddy = await prisma.buddyProfile.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, phone: true, email: true, isActive: true, isVerified: true, createdAt: true } },
+        _count: { select: { appointments: true } },
+      },
+    });
+    if (!buddy) return reply.code(404).send({ success: false, error: "Talk Buddy not found" });
+
+    const rating = await prisma.review.aggregate({
+      where: { revieweeId: buddy.userId },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    return reply.send({
+      success: true,
+      data: {
+        ...buddy,
+        avgRating: rating._avg.rating ?? null,
+        reviewCount: rating._count.rating,
+        totalSessions: buddy._count.appointments,
+      },
+    });
+  }
+
+  async getCrisisCounselor(req: FastifyRequest, reply: FastifyReply) {
+    const { id } = req.params as { id: string };
+    const counselor = await prisma.crisisCounselorProfile.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, phone: true, email: true, isActive: true, isVerified: true, createdAt: true } },
+        _count: { select: { sessions: true } },
+      },
+    });
+    if (!counselor) return reply.code(404).send({ success: false, error: "Counselor not found" });
+
+    return reply.send({
+      success: true,
+      data: { ...counselor, totalSessions: counselor._count.sessions },
+    });
+  }
+
   async listCrisisCounselors(_req: FastifyRequest, reply: FastifyReply) {
     const counselors = await prisma.crisisCounselorProfile.findMany({
       include: {
@@ -146,6 +296,46 @@ export class AdminController {
     });
 
     return reply.send({ success: true, data: buddy });
+  }
+
+  async suspendUser(req: FastifyRequest, reply: FastifyReply) {
+    const { id } = req.params as { id: string };
+    const user = await prisma.user.update({ where: { id }, data: { isActive: false }, select: { id: true, email: true, phone: true, role: true, isActive: true } });
+    return reply.send({ success: true, data: user });
+  }
+
+  async reactivateUser(req: FastifyRequest, reply: FastifyReply) {
+    const { id } = req.params as { id: string };
+    const user = await prisma.user.update({ where: { id }, data: { isActive: true }, select: { id: true, email: true, phone: true, role: true, isActive: true } });
+    return reply.send({ success: true, data: user });
+  }
+
+  async listAdmins(_req: FastifyRequest, reply: FastifyReply) {
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { id: true, email: true, phone: true, adminTier: true, isActive: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
+    return reply.send({ success: true, data: admins });
+  }
+
+  async createAdmin(req: FastifyRequest, reply: FastifyReply) {
+    const { email, phone, password, adminTier = "STANDARD" } = req.body as { email: string; phone: string; password: string; adminTier?: string };
+    const bcrypt = await import("bcryptjs");
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await prisma.user.create({
+      data: { email, phone, passwordHash, role: "ADMIN", adminTier, isVerified: true },
+      select: { id: true, email: true, phone: true, adminTier: true, createdAt: true },
+    });
+    return reply.code(201).send({ success: true, data: user });
+  }
+
+  async setAdminTier(req: FastifyRequest, reply: FastifyReply) {
+    const { id } = req.params as { id: string };
+    const { tier } = req.body as { tier: string };
+    if (!["STANDARD", "SUPER"].includes(tier)) return reply.code(400).send({ success: false, error: "Invalid tier. Use STANDARD or SUPER" });
+    const user = await prisma.user.update({ where: { id, role: "ADMIN" }, data: { adminTier: tier }, select: { id: true, email: true, adminTier: true } });
+    return reply.send({ success: true, data: user });
   }
 
   async getRevenue(req: FastifyRequest, reply: FastifyReply) {

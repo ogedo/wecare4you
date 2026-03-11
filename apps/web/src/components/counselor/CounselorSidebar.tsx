@@ -2,34 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Calendar, Users, DollarSign, LogOut, MessageSquare, User, CreditCard } from "lucide-react";
+import { LayoutDashboard, Users, Clock, User, LogOut } from "lucide-react";
 import { cn } from "@wecare4you/ui";
 import { useAuthStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 
-const THERAPIST_NAV = [
-  { href: "/therapist/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/therapist/appointments", label: "Appointments", icon: Calendar },
-  { href: "/therapist/patients", label: "Patients", icon: Users },
-  { href: "/therapist/messages", label: "Messages", icon: MessageSquare },
-  { href: "/therapist/earnings", label: "Earnings", icon: DollarSign },
+const COUNSELOR_NAV = [
+  { href: "/counselor/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/counselor/queue", label: "Queue", icon: Users },
+  { href: "/counselor/sessions", label: "Session History", icon: Clock },
+  { href: "/counselor/profile", label: "Profile", icon: User },
 ];
 
-const BUDDY_NAV = [
-  { href: "/buddy/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/buddy/sessions", label: "Sessions", icon: Calendar },
-  { href: "/buddy/messages", label: "Messages", icon: MessageSquare },
-  { href: "/buddy/earnings", label: "Earnings", icon: DollarSign },
-  { href: "/buddy/profile", label: "Profile", icon: User },
-  { href: "/buddy/availability", label: "Availability", icon: Calendar },
-  { href: "/buddy/bank-setup", label: "Bank Setup", icon: CreditCard },
-];
-
-export function ProviderSidebar({ role }: { role: "therapist" | "buddy" }) {
+export function CounselorSidebar() {
   const pathname = usePathname();
   const logout = useAuthStore((s) => s.logout);
-  const nav = role === "therapist" ? THERAPIST_NAV : BUDDY_NAV;
 
   const handleLogout = async () => {
     await api.post("/auth/logout").catch(() => {});
@@ -42,15 +30,13 @@ export function ProviderSidebar({ role }: { role: "therapist" | "buddy" }) {
       <div className="p-6 border-b border-neutral-200 flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-primary-600">WeCare4You</h1>
-          <p className="text-xs text-neutral-500 mt-0.5">
-            {role === "therapist" ? "Therapist Portal" : "Talk Buddy Portal"}
-          </p>
+          <p className="text-xs text-neutral-500 mt-0.5">Crisis Counselor Portal</p>
         </div>
         <NotificationBell />
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {nav.map(({ href, label, icon: Icon }) => (
+        {COUNSELOR_NAV.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

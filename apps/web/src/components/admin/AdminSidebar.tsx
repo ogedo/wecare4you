@@ -10,6 +10,7 @@ import {
   CreditCard,
   LogOut,
   HeartHandshake,
+  Shield,
 } from "lucide-react";
 import { cn } from "@wecare4you/ui";
 import { useAuthStore } from "@/lib/store";
@@ -28,6 +29,8 @@ const NAV = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const logout = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user) as ({ adminTier?: string } & { id: string; phone: string; email?: string; role: string }) | null;
+  const isSuper = user?.adminTier === "SUPER";
 
   const handleLogout = async () => {
     await api.post("/auth/logout").catch(() => {});
@@ -58,6 +61,20 @@ export function AdminSidebar() {
             {label}
           </Link>
         ))}
+        {isSuper && (
+          <Link
+            href="/admin/admins"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+              pathname === "/admin/admins"
+                ? "bg-primary-50 text-primary-700"
+                : "text-neutral-600 hover:bg-neutral-100"
+            )}
+          >
+            <Shield className="h-4 w-4" />
+            Admin Team
+          </Link>
+        )}
       </nav>
 
       <div className="p-4 border-t border-neutral-200">

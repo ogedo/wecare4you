@@ -15,6 +15,7 @@ import { crisisRoutes } from "../modules/crisis/crisis.routes";
 import { packageRoutes } from "../modules/packages/package.routes";
 
 export async function registerRoutes(app: FastifyInstance) {
+  app.get("/", async () => ({ name: "WeCare4You API", version: "1.0.0", status: "ok", docs: "/documentation" }));
   app.get("/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
 
   await app.register(authRoutes, { prefix: "/auth" });

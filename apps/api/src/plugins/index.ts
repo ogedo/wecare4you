@@ -15,8 +15,8 @@ import { redis } from "../lib/redis";
 // Augment FastifyRequest with user payload
 declare module "@fastify/jwt" {
   interface FastifyJWT {
-    payload: { sub: string; role: string };
-    user: { sub: string; role: string };
+    payload: { sub: string; role: string; adminTier: string };
+    user: { sub: string; role: string; adminTier: string };
   }
 }
 

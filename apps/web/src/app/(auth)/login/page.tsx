@@ -33,9 +33,14 @@ export default function LoginPage() {
       document.cookie = "wc4y_session=1; path=/; max-age=" + 7 * 24 * 3600;
       setAuth(accessToken, user);
 
-      if (user.role === "ADMIN") router.push("/admin/dashboard");
-      else if (user.role === "THERAPIST") router.push("/therapist/dashboard");
-      else router.push("/buddy/dashboard");
+      const routes: Record<string, string> = {
+        ADMIN: "/admin/dashboard",
+        THERAPIST: "/therapist/dashboard",
+        TALK_BUDDY: "/buddy/dashboard",
+        CRISIS_COUNSELOR: "/counselor/dashboard",
+        PATIENT: "/patient/home",
+      };
+      router.push(routes[user.role] ?? "/login");
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
       setError(e.response?.data?.error || "Login failed");
@@ -47,7 +52,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-neutral-200 p-8">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-primary-600">WeCare4You</h1>
-          <p className="text-neutral-500 mt-1">Provider & Admin Portal</p>
+          <p className="text-neutral-500 mt-1">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

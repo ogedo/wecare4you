@@ -98,7 +98,7 @@ export class AuthController {
     }
     try {
       const user = await this.service.login(body.data.email, body.data.password);
-      const { accessToken, refreshToken } = this.issueTokens(user.id, user.role);
+      const { accessToken, refreshToken } = this.issueTokens(user.id, user.role, user.adminTier ?? "STANDARD");
       await this.service.storeRefreshToken(user.id, refreshToken);
       reply.setCookie("refreshToken", refreshToken, COOKIE_OPTS);
       reply.setCookie("wc4y_session", "1", SESSION_SIGNAL_OPTS);
@@ -106,7 +106,7 @@ export class AuthController {
         success: true,
         data: {
           accessToken,
-          user: { id: user.id, phone: user.phone, email: user.email, role: user.role },
+          user: { id: user.id, phone: user.phone, email: user.email, role: user.role, adminTier: user.adminTier },
         },
       });
     } catch (err: unknown) {
@@ -144,13 +144,13 @@ export class AuthController {
     return reply.send({ success: true, message: "Logged out" });
   }
 
-  private issueTokens(userId: string, role: string) {
+  private issueTokens(userId: string, role: string, adminTier = "STANDARD") {
     const accessToken = this.app.jwt.sign(
-      { sub: userId, role },
+      { sub: userId, role, adminTier },
       { expiresIn: env.JWT_ACCESS_EXPIRY }
     );
     const refreshToken = this.app.jwt.sign(
-      { sub: userId, role },
+      { sub: userId, role, adminTier },
       { expiresIn: env.JWT_REFRESH_EXPIRY }
     );
     return { accessToken, refreshToken };

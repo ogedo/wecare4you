@@ -46,6 +46,7 @@ model User {
   phone                   String   @unique
   passwordHash            String?
   role                    Role
+  adminTier               String   @default("STANDARD")
   isVerified              Boolean  @default(false)
   isActive                Boolean  @default(true)
   paystackRecipientCode   String?
